@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.DS_Store
+
+# Local SQLite scratch DB (cloud uses Postgres only) + local env file
+*.db
+dev.db
+.env
+
+# Ignore all markdown files (including plan docs)
+*.md
