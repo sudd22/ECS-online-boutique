@@ -3,14 +3,14 @@ variable "env" {
   description = "Deployment Enviorment"
 }
 
-variable "public_subnet_ids" {
-  type        = string
-  description = "Public Subnet Id Of the ALB"
-}
-
 variable "vpc_id" {
   type        = string
   description = "VPC id"
+}
+
+variable "public_subnet_ids" {
+  type        = string
+  description = "Public Subnet Id Of the ALB"
 }
 
 variable "alb_sg" {

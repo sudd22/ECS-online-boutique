@@ -1,0 +1,40 @@
+name: b2b-modular-monolith-local
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: local-postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: local_secure_password123
+      POSTGRES_DB: b2b_monolith_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_local_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d b2b_monolith_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: local-fastapi-app
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=local
+      - DATABASE_URL=postgresql://postgres:local_secure_password123@db:5432/b2b_monolith_dev
+      - JWT_SECRET_KEY=local_development_only_secret_key_987654321
+      - OTEL_SDK_DISABLED=true
+      - AWS_ACCESS_KEY_ID=mock_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret
+      - AWS_DEFAULT_REGION=eu-west-2
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+volumes:
+  postgres_local_data:

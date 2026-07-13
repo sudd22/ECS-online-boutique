@@ -1,0 +1,26 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+sqlalchemy==2.0.31
+psycopg2-binary==2.9.9
+pydantic==2.7.4
+pydantic-settings==2.3.4
+PyJWT==2.8.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.9
+boto3==1.34.140
+email-validator==2.2.0
+
+# --- OpenTelemetry auto-instrumentation (FIX #1) ---
+# Required by the Dockerfile entrypoint `opentelemetry-instrument ...`.
+# distro + exporter use the 1.27 / 0.48b line; keep these versions paired,
+# or regenerate with `opentelemetry-bootstrap -a install`.
+opentelemetry-distro==0.48b0
+opentelemetry-exporter-otlp==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+opentelemetry-instrumentation-sqlalchemy==0.48b0
+opentelemetry-instrumentation-logging==0.48b0
+
+# Lets the SAME image run as a Lambda (the notification consumer) via an
+# entry_point override to `python -m awslambdaric`. Unused by the ECS/uvicorn path.
+awslambdaric==3.0.0

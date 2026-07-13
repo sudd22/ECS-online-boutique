@@ -6,11 +6,15 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .DS_Store
-
-# Local SQLite scratch DB (cloud uses Postgres only) + local env file
 *.db
 dev.db
 .env
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
 
-# Ignore all markdown files (including plan docs)
-*.md
+
+
+
