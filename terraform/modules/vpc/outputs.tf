@@ -23,5 +23,5 @@ output "lambda_sg" {
 }
 
 output "rds_sg" {
-  value = aws_security_group.nat_sg.id
+  value = aws_security_group.rds_sg.id
 }

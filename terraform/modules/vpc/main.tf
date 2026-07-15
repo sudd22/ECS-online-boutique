@@ -155,9 +155,9 @@ resource "aws_security_group" "lambda" {
   }
 }
 
-resource "aws_security_group" "nat_sg" {
+resource "aws_security_group" "rds_sg" {
   name        = "${var.env}-nat-sg"
-  description = "NAT Gateway Security Rules"
+  description = "NAT Gateway RDS Security Rules"
   vpc_id      = aws_vpc.main.id
 
   ingress {
