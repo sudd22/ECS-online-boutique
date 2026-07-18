@@ -1,13 +1,13 @@
 resource "aws_db_subnet_group" "main" {
-  name       = "${var.environment}-db-subnet-group"
+  name       = "${var.env}-db-subnet-group"
   subnet_ids = var.private_subnet_ids
   tags = {
-    Name = "${var.environment}-db-subnet-group"
+    Name = "${var.env}-db-subnet-group"
   }
 }
 
 resource "aws_db_instance" "main" {
-  identifier                  = "${var.environment}-postgres-db"
+  identifier                  = "${var.env}-postgres-db"
   engine                      = "postgres"
   engine_version              = var.engine_version
   db_name                     = var.db_name
@@ -20,6 +20,6 @@ resource "aws_db_instance" "main" {
   vpc_security_group_ids      = [var.rds_sg_id]
   manage_master_user_password = true
   tags = {
-    Name = "${var.environment}-postgres-db"
+    Name = "${var.env}-postgres-db"
   }
 }
