@@ -15,7 +15,7 @@ resource "aws_lambda_function" "remediation" {
   environment {
     variables = {
       ECS_CLUSTER_NAME = var.ecs_cluster_name
-      ECS_SERVICE_NAME = "${var.env}-b2b-monolith-service"
+      ECS_SERVICE_NAME = var.ecs_service_name
     }
   }
 }
