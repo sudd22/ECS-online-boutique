@@ -49,3 +49,11 @@ module "ecs" {
   notifications_queue_arn = module.sqs.notifications_queue_arn
   desired_count           = 1
 }
+
+module "fis" {
+  source           = "../../modules/fis"
+  env              = var.environment
+  region           = var.region
+  ecs_cluster_name = module.ecs.ecs_cluster_name
+  ecs_service_name = module.ecs.ecs_service_name
+}
