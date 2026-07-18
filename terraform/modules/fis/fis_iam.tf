@@ -19,9 +19,9 @@ resource "aws_iam_role_policy" "fis_experiment_role_policy" {
   role = aws_iam_role.fis_service_role.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statment = [
+    Statement = [
       {
-        action = [
+        Action = [
           "ecs:ListTasks",
           "ecs:DescribeTasks",
           "ecs:DescribeClusters",
@@ -55,4 +55,4 @@ resource "aws_iam_role_policy" "fis_experiment_role_policy" {
     ]
   })
 }
-   
+
