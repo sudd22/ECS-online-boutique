@@ -1,0 +1,77 @@
+name: 1-build-and-push
+on:
+    push:
+        branches: ["main"]
+        paths:
+            ["app/**", "requirment.txt", ".github/workflows/build-and-push.yml"]
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: "TARGET ENVIRONMENT"
+                required: true
+                type: choice
+                default: "dev"
+                options:
+                    - dev
+                    - prod
+
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    AWS_REGION: "eu-west-2"
+    AWS_ROLE_NAME: "arn:aws:iam::774667856934:role/github-actions-ecr-push-role"
+    ECR_REPOSITORY: "b2b-monolith-app"
+    ECS_CLUSTER: "${{ github.event.inputs.environment || 'dev' }}-b2b-cluster"
+    ECS_SERVICE: "${{ github.event.inputs.environment || 'dev' }}-b2b-monolith-service"
+
+jobs:
+    build-package-scan:
+        name: "Build, Scan and push"
+        runs-on: ubuntu-latest
+        steps:
+            - name: "Checkout Code"
+              uses: actions/checkout@v4
+
+            - name: "Build local Test Image"
+              run: docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha}} -f dockerfiles/Dockerfile .
+
+            - name: "Trivy Container Security Scan"
+              uses: aquasecurity/trivy-action@master
+              with:
+                  image-ref: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+                  format: table
+                  exit-code: "1"
+                  vuln-type: "os,library"
+                  ignore-unfixed: true
+                  severity: "HIGH,CRITICAL"
+
+            - name: "Configure AWS Via OIDC"
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  role-to-assume: ${{ env.AWS_ROLE_NAME }}
+                  aws-region: ${{ env.AWS_REGION }}
+
+            - name: "Authenticate With AWS ECR"
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            - name: "Push Validated Image To ECR"
+              env:
+                  REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+              run: |
+                  docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+                  $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+                  docker tag ${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
+                  $REGISTRY/${{ env.ECR_REPOSITORY }}:latest
+                  docker push $REGISTRY/${{ env.ECR_REPOSITORY }}:${{ github.sha }} 
+                  docker push $REGISTRY/${{ env.ECR_REPOSITORY }}:latest
+
+            - name: "Trigger ECS Rolling Deployment"
+              if: github.event_name != 'pull_request'
+              run: |
+                  aws ecs update-service
+                    --cluster ${{ env.ECS_CLUSTER }} \
+                    --service ${{ env.ECS_SERVICE }} \
+                    --force-new-deployment
