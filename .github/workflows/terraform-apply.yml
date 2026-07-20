@@ -1,0 +1,57 @@
+name: 3-terraform-apply
+on:
+    push:
+        branches: ["main"]
+        paths: "terraform/**"
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: "TARGET ENVIRONMENT"
+                required: true
+                type: choice
+                default: "dev"
+                options:
+                    - dev
+                    - prod
+            confirm:
+                description: "Type 'apply-prod' to confirm deployment to production"
+                required: true
+                type: string
+
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    AWS_REGION: "eu-west-2"
+    AWS_ROLE_NAME: "arn:aws:iam::774667856934:role/github-actions-tf-apply-role"
+    TF_WORK_DIR: "terraform/environments/${{ github.event.inputs.environment || 'dev' }}"
+
+jobs:
+    apply:
+        runs-on: ubuntu-latest
+        steps:
+            - name: "Verify Production Deploy Confirmation"
+              if: ${{ github.event.inputs.environment == 'prod' && github.event.inputs.confirm != 'apply-prod' }}
+              run: |
+                  echo "ERROR: Production deployment requested but confirmation keyword is missing or incorrect!"
+                  exit 1
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                  terraform_version: "1.7.0"
+
+            - name: Set up OIDC
+              uses: aws-actions/configure-aws-credentials@v4
+              with:
+                  aws-region: ${{ env.AWS_REGION }}
+                  role-to-assume: ${{ env.AWS_ROLE_NAME }}
+
+            - name: "Execute Terraform Apply"
+              run: |
+                  terraform init
+                  terraform apply -auto-approve -input=false
+              working-directory: ${{ env.TF_WORK_DIR }}
