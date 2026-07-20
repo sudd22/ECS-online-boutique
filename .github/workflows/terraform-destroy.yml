@@ -1,0 +1,52 @@
+name: 4-terraform-destroy
+on:
+    workflow_dispatch:
+        inputs:
+            environment:
+                description: "TARGET ENVIRONMENT"
+                required: true
+                default: "dev"
+                type: choice
+                options:
+                    - dev
+                    - prod
+            confirm:
+                description: "Type 'destroy-prod' to confirm destruction on production"
+                required: true
+                type: string
+permissions:
+    id-token: write
+    contents: read
+
+env:
+    AWS_REGION: "eu-west-2"
+    AWS_ROLE_NAME: "arn:aws:iam::774667856934:role/github-actions-tf-destroy-role"
+    TF_WORK_DIR: "terraform/environments/${{ github.event.inputs.environment || 'dev' }}"
+
+jobs:
+    destory:
+        runs-on: ubuntu-latest
+        steps:
+            - name: "Verify Production Teardown Confirmation"
+              if: ${{ github.event.inputs.environment == 'prod' && github.event.inputs.confirm != 'destroy-prod' }}
+              run: |
+                  echo "ERROR: Production teardown requested but confirmation keyword is missing or incorrect!"
+                  exit 1
+            - name: Checkout Code
+              uses: actions/checkout@v4
+
+            - name: Setup Terraform
+              uses: hashicorp/setup-terraform@v3
+              with:
+                  terraform_version: "1.7.0"
+
+            - name: "Configure OIDC"
+              uses: "aws-actions/configure-aws-credentials@v4"
+              with:
+                  aws-region: ${{ env.AWS_REGION }}
+                  role-to-assume: ${{ env.AWS_ROLE_NAME }}
+            - name: Execute Terraform Destroy
+              run: |
+                  terraform init
+                  terraform destroy -auto-approve -input=false
+              working-directory: ${{ env.TF_WORK_DIR }}
