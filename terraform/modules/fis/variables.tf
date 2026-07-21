@@ -23,3 +23,9 @@ variable "devops_agent_ingestion_lambda" {
   default     = "devops-agent-ingestion"
   description = "The name of the DevOps Agent webhook for the ingestion Lambda function"
 }
+
+variable "enable_devops_agent_integration" {
+  type        = bool
+  default     = false
+  description = "Toggled to true after completing AWS DevOps Agent onboarding on the web console"
+}

@@ -14,11 +14,12 @@ resource "aws_cloudwatch_event_rule" "fis_anomaly_trigger" {
 
 resource "aws_cloudwatch_event_target" "devops_agent_target" {
   rule      = aws_cloudwatch_event_rule.fis_anomaly_trigger.name
-  target_id = "TriggerDevOpsAgent Ingestion"
+  target_id = "TriggerDevOpsAgentIngestion"
   arn       = "arn:aws:lambda:${var.region}:${data.aws_caller_identity.current.account_id}:function:${var.devops_agent_ingestion_lambda}"
 }
 
 resource "aws_lambda_permission" "allow_eventbridge_ingestion" {
+  count         = var.enable_devops_agent_integration ? 1 : 0
   statement_id  = "AllowExecutionFromEventBridge"
   action        = "lambda:InvokeFunction"
   principal     = "events.amazonaws.com"

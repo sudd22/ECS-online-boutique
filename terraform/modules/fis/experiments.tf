@@ -14,10 +14,14 @@ resource "aws_fis_experiment_template" "network_blackhole" {
       key   = "port"
       value = "5432"
     }
+    parameter {
+      key   = "trafficType"
+      value = "egress"
+    }
 
     parameter {
       key   = "protocol"
-      value = "TCP"
+      value = "tcp"
     }
 
     parameter {
