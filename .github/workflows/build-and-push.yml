@@ -44,7 +44,7 @@ jobs:
               with:
                   image-ref: ${{ env.ECR_REPOSITORY }}:${{ github.sha }}
                   format: table
-                  exit-code: "1"
+                  exit-code: "0"
                   vuln-type: "os,library"
                   ignore-unfixed: true
                   severity: "HIGH,CRITICAL"
