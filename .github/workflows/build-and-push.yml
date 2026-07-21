@@ -73,7 +73,7 @@ jobs:
             - name: "Trigger ECS Rolling Deployment"
               if: github.event_name != 'pull_request'
               run: |
-                  aws ecs update-service
+                  aws ecs update-service \
                     --cluster ${{ env.ECS_CLUSTER }} \
                     --service ${{ env.ECS_SERVICE }} \
                     --force-new-deployment
