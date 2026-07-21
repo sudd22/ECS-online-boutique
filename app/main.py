@@ -21,7 +21,7 @@ logger = logging.getLogger("main")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Bootstrap the local environment automatically on startup."""
-    if settings.ENVIRONMENT == "local":
+    if settings.ENVIRONMENT in ("local", "dev"):
         try:
             from app.core.seed import seed_local_database
 
