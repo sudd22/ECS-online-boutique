@@ -35,7 +35,9 @@ jobs:
               uses: actions/checkout@v4
 
             - name: "Build local Test Image"
-              run: docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha}} -f dockerfiles/Dockerfile .
+              run: |
+                  cp dockerfiles/requirments.txt .
+                  docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha}} -f dockerfiles/Dockerfile .
 
             - name: "Trivy Container Security Scan"
               uses: aquasecurity/trivy-action@master
