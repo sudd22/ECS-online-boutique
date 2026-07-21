@@ -36,7 +36,7 @@ jobs:
 
             - name: "Build local Test Image"
               run: |
-                  cp dockerfiles/requirments.txt .
+                  cp dockerfiles/requirements.txt .
                   docker build -t ${{ env.ECR_REPOSITORY }}:${{ github.sha}} -f dockerfiles/Dockerfile .
 
             - name: "Trivy Container Security Scan"
