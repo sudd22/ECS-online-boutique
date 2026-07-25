@@ -83,6 +83,24 @@ resource "aws_ecs_task_definition" "monolith" {
           "awslogs-stream-prefix" = "otel"
         }
       }
+    },
+    {
+      name      = "ssm-agent"
+      image     = "public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest"
+      essential = false
+
+      environment = [
+        { name = "MANAGED_INSTANCE_ROLE_NAME", value = "${var.env}-b2b-ecs-task-role" }
+      ]
+      log_configuration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.app.name
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ssm"
+        }
+      }
+
     }
   ])
 }
@@ -189,3 +207,29 @@ resource "aws_iam_role_policy" "task_sqs_publish" {
     }]
   })
 }
+resource "aws_iam_role_policy" "ecs_task_ssm_activation" {
+  name = "${var.env}-b2b-ecs-task-ssm-activation"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ssm:CreateActivation",
+          "ssm:AddTagsToResource",
+          "ssm:DeregisterManagedInstance",
+          "ssm:DescribeInstanceInformation"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = aws_iam_role.ecs_task.arn
+      }
+    ]
+  })
+}
+
