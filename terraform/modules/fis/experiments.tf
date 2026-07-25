@@ -25,6 +25,11 @@ resource "aws_fis_experiment_template" "network_blackhole" {
     }
 
     parameter {
+      key   = "useEcsFaultInjectionEndpoints"
+      value = "true"
+    }
+
+    parameter {
       key   = "duration"
       value = "PT10M"
     }
@@ -41,7 +46,7 @@ resource "aws_fis_experiment_template" "network_blackhole" {
     selection_mode = "COUNT(1)"
 
     resource_tag {
-      key   = "aws:ecs:service-name"
+      key   = "aws:ecs:serviceName"
       value = var.ecs_service_name
     }
   }
