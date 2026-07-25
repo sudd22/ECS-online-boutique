@@ -16,3 +16,14 @@ variable "deploy_nat_gateway" {
   type        = bool
   description = "Toggle to deploy the NAT gateway (FinOps cost control)"
 }
+
+variable "devops_agent_webhook_url" {
+  type        = string
+  description = "Webhook URL for AWS DevOps Agent"
+}
+
+variable "devops_agent_api_key" {
+  type        = string
+  sensitive   = true
+  description = "API Key for AWS DevOps Agent"
+}
