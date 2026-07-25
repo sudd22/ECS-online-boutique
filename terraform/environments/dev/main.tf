@@ -1,3 +1,21 @@
+resource "aws_cloudwatch_metric_alarm" "http5xx_alarm" {
+  alarm_name          = "${var.environment}-b2b-monolith-http5xx-alarm"
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "HTTPCode_Target_5XX_Count"
+  namespace           = "AWS/ApplicationELB"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 1
+  alarm_description   = "Triggers when containers return HTTP 5XX codes (such as database connection errors)"
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    LoadBalancer = join("/", slice(split("/", module.alb.alb_arn), 1, 4))
+  }
+}
+
+
 module "vpc" {
   source             = "../../modules/vpc"
   env                = var.environment
@@ -51,9 +69,12 @@ module "ecs" {
 }
 
 module "fis" {
-  source           = "../../modules/fis"
-  env              = var.environment
-  region           = var.region
-  ecs_cluster_name = module.ecs.ecs_cluster_name
-  ecs_service_name = module.ecs.ecs_service_name
+  source                          = "../../modules/fis"
+  env                             = var.environment
+  region                          = var.region
+  ecs_cluster_name                = module.ecs.ecs_cluster_name
+  ecs_service_name                = module.ecs.ecs_service_name
+  enable_devops_agent_integration = true
+  devops_agent_webhook_url        = var.devops_agent_webhook_url
+  devops_agent_api_key            = var.devops_agent_api_key
 }
