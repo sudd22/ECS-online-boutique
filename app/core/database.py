@@ -2,12 +2,13 @@ from collections.abc import Generator
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool
 
 from app.config import settings
 
 engine = create_engine(
     settings.db_url,
-    pool_pre_ping=True,
+    poolclass=NullPool,
     connect_args={"connect_timeout": 3},
 )
 

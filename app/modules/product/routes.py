@@ -22,7 +22,7 @@ class ProductResponse(BaseModel):
 
 
 @router.get("", response_model=list[ProductResponse], tags=["products"])
-async def list_products(
+def list_products(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
@@ -31,7 +31,7 @@ async def list_products(
 
 
 @router.get("/{product_id}", response_model=ProductResponse, tags=["products"])
-async def get_product(
+def get_product(
     product_id: int,
     db: Session = Depends(get_db),
 ) -> ProductResponse:
