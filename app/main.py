@@ -1,11 +1,10 @@
-"""Single FastAPI entrypoint: global lifespan + module router mounting."""
-
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from sqlalchemy.exc import DBAPIError, OperationalError
 
 from app.config import settings
 from app.modules.auth.routes import router as auth_router
@@ -20,14 +19,13 @@ logger = logging.getLogger("main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Bootstrap the local environment automatically on startup."""
     if settings.ENVIRONMENT in ("local", "dev"):
         try:
             from app.core.seed import seed_local_database
 
             seed_local_database()
             logger.info("Local bootstrap seed complete.")
-        except Exception as exc:  # noqa: BLE001 - never block startup on seed
+        except Exception as exc:
             logger.warning("Local seed skipped/failed: %s", exc)
     yield
 
@@ -39,24 +37,28 @@ app = FastAPI(
 )
 
 
+@app.exception_handler(OperationalError)
+@app.exception_handler(DBAPIError)
+async def database_unavailable_handler(request: Request, exc: Exception):
+    logger.error("Database unavailable on %s: %s", request.url.path, exc)
+    return JSONResponse(status_code=500, content={"detail": "database unavailable"})
+
+
 STATIC_DIR = Path(__file__).parent / "static"
 
 
 @app.get("/health", tags=["system"])
 async def health():
-    """Shallow, unauthenticated health probe for ALB target groups / Docker."""
     return {"status": "healthy"}
 
 
 @app.get("/store", include_in_schema=False)
 async def storefront():
-    """Serve the self-contained single-file storefront UI."""
     return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/", include_in_schema=False)
 async def root_redirect():
-    """Send the bare host to the storefront for a friendly landing page."""
     return RedirectResponse(url="/store")
 
 
