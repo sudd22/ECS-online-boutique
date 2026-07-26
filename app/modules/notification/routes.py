@@ -1,9 +1,3 @@
-"""Internal system management endpoints for the notification module.
-
-These let operators inspect the outbound notification log and replay an event
-through the same handler the SQS consumer uses (handy for local demos).
-"""
-
 from datetime import datetime
 
 from fastapi import APIRouter, Depends
@@ -36,5 +30,4 @@ async def list_notifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[NotificationResponse]:
-    """List recent outbound notifications (auth-protected internal view)."""
     return services.list_notifications(db, limit=limit)

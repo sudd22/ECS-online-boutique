@@ -1,5 +1,3 @@
-"""Notification record-keeping logic. Used by routes and the SQS consumer."""
-
 import json
 
 from sqlalchemy import select

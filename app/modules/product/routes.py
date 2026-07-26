@@ -1,5 +1,3 @@
-"""Public, unauthenticated product catalog endpoints."""
-
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -29,7 +27,6 @@ async def list_products(
     limit: int = 100,
     db: Session = Depends(get_db),
 ) -> list[ProductResponse]:
-    """Public catalog listing so reviewers can browse without logging in."""
     return services.list_products(db, skip=skip, limit=limit)
 
 

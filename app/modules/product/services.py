@@ -1,10 +1,3 @@
-"""Product/inventory lookup logic.
-
-This is the public Python API other modules (e.g. order) call to resolve
-product facts. Cross-domain callers MUST use these functions rather than
-joining product tables directly.
-"""
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,7 +14,6 @@ def get_product(db: Session, product_id: int) -> Product | None:
 
 
 def get_products_by_ids(db: Session, product_ids: list[int]) -> dict[int, Product]:
-    """Bulk-resolve products keyed by id (used by order placement)."""
     if not product_ids:
         return {}
     stmt = select(Product).where(Product.id.in_(product_ids))
@@ -30,7 +22,6 @@ def get_products_by_ids(db: Session, product_ids: list[int]) -> dict[int, Produc
 
 
 def decrement_stock(db: Session, product_id: int, quantity: int) -> Product | None:
-    """Atomically reduce stock for a product within the caller's transaction."""
     product = db.get(Product, product_id)
     if product is None:
         return None

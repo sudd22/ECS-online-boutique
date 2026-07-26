@@ -1,9 +1,3 @@
-"""Internal payment records handler.
-
-Persists transaction outcomes. Kept deliberately thin: the payment route owns
-the gateway simulation while this service owns durable record-keeping.
-"""
-
 from decimal import Decimal
 
 from sqlalchemy import select

@@ -1,9 +1,3 @@
-"""Auth domain models: Tenant and User.
-
-These tables are OWNED by the auth module. No other module may join against
-them directly; cross-domain access happens through the auth service API.
-"""
-
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, func

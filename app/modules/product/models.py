@@ -1,5 +1,3 @@
-"""Product domain model. Owned exclusively by the product module."""
-
 from datetime import datetime
 
 from sqlalchemy import DateTime, Integer, Numeric, String, func

@@ -1,5 +1,3 @@
-"""Auth HTTP endpoints: registration and JWT token issuance."""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel, EmailStr
@@ -34,7 +32,6 @@ async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """OAuth2 password-flow token endpoint (Swagger "Authorize" compatible)."""
     user = services.authenticate_user(db, form_data.username, form_data.password)
     if user is None:
         raise HTTPException(
@@ -50,7 +47,6 @@ async def login_json(
     payload: LoginRequest,
     db: Session = Depends(get_db),
 ) -> TokenResponse:
-    """JSON-body login alternative for SPA / API clients."""
     user = services.authenticate_user(db, payload.email, payload.password)
     if user is None:
         raise HTTPException(

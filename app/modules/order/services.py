@@ -1,10 +1,3 @@
-"""Order placement logic.
-
-Cross-domain rule: product facts are resolved through the product module's
-public service API (`product.services`), never via a SQL join. The acting user
-/ tenant identity arrives pre-resolved from the auth dependency.
-"""
-
 from decimal import Decimal
 
 from sqlalchemy.orm import Session
@@ -14,8 +7,6 @@ from app.modules.product import services as product_services
 
 
 class OrderError(Exception):
-    """Domain-level error surfaced to the route as a 4xx response."""
-
     def __init__(self, message: str, status_code: int = 400) -> None:
         super().__init__(message)
         self.message = message
@@ -29,11 +20,6 @@ def create_order(
     user_id: int,
     items: list[dict],
 ) -> Order:
-    """Create a PENDING order.
-
-    `items` is a list of {"product_id": int, "quantity": int}. Prices and
-    stock are validated through the product service (no cross-module join).
-    """
     if not items:
         raise OrderError("An order must contain at least one item.")
 
@@ -66,7 +52,6 @@ def create_order(
                 status_code=409,
             )
 
-        # Reserve stock through the product module's public API.
         product_services.decrement_stock(db, product_id, quantity)
 
         line_price = Decimal(str(product.price))

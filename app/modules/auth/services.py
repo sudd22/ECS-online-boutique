@@ -1,9 +1,3 @@
-"""Auth business logic: password hashing, user lookup, JWT issuance.
-
-This module is the ONLY public surface other domains may use to resolve user /
-tenant facts. Other modules import these functions instead of joining tables.
-"""
-
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -48,7 +42,6 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 
 
 def create_access_token(user: User) -> str:
-    """Mint an HS256 JWT containing the user identity and tenant claim."""
     now = datetime.now(timezone.utc)
     payload: dict[str, Any] = {
         "sub": str(user.id),
@@ -61,7 +54,6 @@ def create_access_token(user: User) -> str:
 
 
 def decode_access_token(token: str) -> dict[str, Any]:
-    """Decode and validate a JWT, raising jwt exceptions on failure."""
     return jwt.decode(
         token,
         settings.JWT_SECRET_KEY,

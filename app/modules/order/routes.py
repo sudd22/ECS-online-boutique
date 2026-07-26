@@ -1,5 +1,3 @@
-"""Order endpoints. Protected by the shared get_current_user guard."""
-
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -54,7 +52,6 @@ async def create_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> OrderResponse:
-    """Create a PENDING order for the authenticated user's tenant."""
     try:
         order = services.create_order(
             db,
