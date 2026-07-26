@@ -7,7 +7,6 @@ from app.core.database import Base, SessionLocal, engine
 
 logger = logging.getLogger("seed")
 
-
 CATALOG = [
     {
         "name": "Pilot Sunglasses",
@@ -61,12 +60,12 @@ CATALOG = [
 
 
 def seed_local_database() -> None:
-    from app.modules.auth.models import Tenant, User  
-    from app.modules.notification.models import Notification  
-    from app.modules.order.models import Order, OrderItem  
-    from app.modules.payment.models import Payment  
-    from app.modules.product.models import Product  
+    from app.modules.auth.models import Tenant, User
     from app.modules.auth.services import hash_password
+    from app.modules.notification.models import Notification  # noqa: F401
+    from app.modules.order.models import Order, OrderItem  # noqa: F401
+    from app.modules.payment.models import Payment  # noqa: F401
+    from app.modules.product.models import Product
 
     Base.metadata.create_all(bind=engine)
 
@@ -76,7 +75,7 @@ def seed_local_database() -> None:
         if existing_tenant is None:
             tenant = Tenant(name="Acme Global Tech", plan="enterprise")
             db.add(tenant)
-            db.flush() 
+            db.flush()
 
             recruiter = User(
                 email="recruiter@company.com",
@@ -92,6 +91,7 @@ def seed_local_database() -> None:
             )
         else:
             logger.info("Seed skipped: tenant '%s' already present.", existing_tenant.name)
+
         synced = 0
         for item in CATALOG:
             product = db.execute(

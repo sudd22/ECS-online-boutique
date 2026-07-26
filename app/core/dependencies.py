@@ -1,10 +1,3 @@
-"""Shared authentication/security guards.
-
-`get_current_user` validates the bearer JWT and resolves the User entity via
-the auth service layer. Other module routers depend on this to enforce auth
-without ever importing the auth tables for a cross-domain join.
-"""
-
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -14,8 +7,7 @@ from app.core.database import get_db
 from app.modules.auth import services
 from app.modules.auth.models import User
 
-# tokenUrl points at the auth module's token endpoint so Swagger's Authorize
-# button works out of the box.
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 _CREDENTIALS_EXCEPTION = HTTPException(
