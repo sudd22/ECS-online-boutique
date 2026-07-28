@@ -13,11 +13,12 @@ module "rds" {
 }
 
 module "alb" {
-  source            = "../../modules/alb"
-  env               = var.environment
-  vpc_id            = module.vpc.vpc_id
-  public_subnet_ids = module.vpc.public_subnet_ids
-  alb_sg            = module.vpc.alb_sg
+  source              = "../../modules/alb"
+  env                 = var.environment
+  vpc_id              = module.vpc.vpc_id
+  public_subnet_ids   = module.vpc.public_subnet_ids
+  alb_sg              = module.vpc.alb_sg
+  acm_certificate_arn = module.acm.certificate_arn
 }
 
 module "waf" {
@@ -34,6 +35,7 @@ module "sqs" {
   db_host               = module.rds.db_host
   db_username           = "postgres"
   db_name               = "b2b_monolith_dev"
+
   db_secret_arn         = module.rds.db_secret_arn
   ecr_url               = "774667856934.dkr.ecr.eu-west-2.amazonaws.com/b2b-monolith-app"
 }
@@ -50,9 +52,26 @@ module "ecs" {
   db_host                 = module.rds.db_host
   db_username             = "postgres"
   db_name                 = "b2b_monolith_dev"
+
   db_secret_arn           = module.rds.db_secret_arn
   notifications_queue_url = module.sqs.notifications_queue_url
   notifications_queue_arn = module.sqs.notifications_queue_arn
   desired_count           = 2
+}
+
+module "route53" {
+  source       = "../../modules/route53"
+  env          = var.environment
+  domain_name  = var.domain_name
+  alb_dns_name = module.alb.alb_dns_name
+  alb_zone_id  = module.alb.alb_zone_id
+}
+
+
+module "acm" {
+  source          = "../../modules/acm"
+  env             = var.environment
+  domain_name     = var.domain_name
+  route53_zone_id = module.route53.zone_id
 }
 
