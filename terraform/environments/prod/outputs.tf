@@ -7,3 +7,8 @@ output "alb_dns_name" {
   value       = module.alb.alb_dns_name
   description = "Public ingress URL for the storefront and API docs"
 }
+
+output "name_servers" {
+  value       = module.route53.name_servers
+  description = "4 Name Servers"
+}
