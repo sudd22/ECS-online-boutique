@@ -15,3 +15,10 @@ variable "deploy_nat_gateway" {
   default     = true
   description = "Toggle to deploy the NAT gateway"
 }
+
+variable "domain_name" {
+  type        = string
+  default     = "seudd.online"
+  description = "Production root domain name"
+}
+
