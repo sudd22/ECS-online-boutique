@@ -7,12 +7,16 @@ resource "aws_cloudwatch_metric_alarm" "http5xx_alarm" {
   period              = 60
   statistic           = "Sum"
   threshold           = 1
-  alarm_description   = "Triggers when containers return HTTP 5XX codes (such as database connection errors)"
+  alarm_description   = "Issue: ALB targets returning HTTP 5XX — app cannot reach Postgres (port 5432). Remediation: Force a new ECS deployment so tasks get fresh network interfaces outside the FIS blackhole."
   treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.fis.ops_alarms_topic_arn]
+  ok_actions          = [module.fis.ops_alarms_topic_arn]
 
   dimensions = {
     LoadBalancer = join("/", slice(split("/", module.alb.alb_arn), 1, 4))
   }
+
+  depends_on = [module.fis]
 }
 
 
@@ -77,4 +81,6 @@ module "fis" {
   enable_devops_agent_integration = true
   devops_agent_webhook_url        = var.devops_agent_webhook_url
   devops_agent_api_key            = var.devops_agent_api_key
+  slack_workspace_id              = var.slack_workspace_id
+  slack_channel_id                = var.slack_channel_id
 }
