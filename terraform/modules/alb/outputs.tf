@@ -10,3 +10,8 @@ output "alb_arn" {
   value       = aws_lb.main.arn
   description = "The ARN of the ALB"
 }
+
+output "alb_zone_id" {
+  value       = aws_lb.main.zone_id
+  description = "The Zone ID of the Application Load Balancer"
+}
