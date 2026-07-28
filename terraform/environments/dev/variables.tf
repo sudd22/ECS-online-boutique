@@ -27,3 +27,15 @@ variable "devops_agent_api_key" {
   sensitive   = true
   description = "API Key for AWS DevOps Agent"
 }
+
+variable "slack_workspace_id" {
+  type        = string
+  default     = ""
+  description = "Slack workspace/team ID (optional). Find in Slack → workspace settings, or leave empty and wire Chatbot in console."
+}
+
+variable "slack_channel_id" {
+  type        = string
+  default     = ""
+  description = "Slack channel ID for #all-seud (optional). Right-click channel → View channel details → copy ID at bottom."
+}
