@@ -25,6 +25,7 @@ resource "aws_iam_role_policy" "fis_experiment_role_policy" {
           "ecs:ListTasks",
           "ecs:DescribeTasks",
           "ecs:DescribeClusters",
+          "ecs:StopTask",
           "ec2:DescribeInstances",
           "ec2:DescribeSubnets"
         ]
@@ -34,7 +35,7 @@ resource "aws_iam_role_policy" "fis_experiment_role_policy" {
       {
         Effect = "Allow"
         Action = [
-          "ssm:StartSession",
+          "ssm:*",
           "ssmmessages:CreateControlChannel",
           "ssmmessages:CreateDataChannel",
           "ssmmessages:OpenControlChannel",
