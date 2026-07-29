@@ -85,14 +85,17 @@ resource "aws_ecs_task_definition" "monolith" {
       }
     },
     {
-      name      = "ssm-agent"
-      image     = "public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest"
-      essential = false
-
+      name       = "ssm-agent"
+      image      = "public.ecr.aws/amazon-ssm-agent/amazon-ssm-agent:latest"
+      cpu        = 256
+      memory     = 512
+      essential  = false
+      entryPoint = []
+      command    = ["/bin/bash", "-c", file("${path.module}/ssm_activation.sh")]
       environment = [
-        { name = "MANAGED_INSTANCE_ROLE_NAME", value = "${var.env}-b2b-ecs-task-role" }
+        { name = "MANAGED_INSTANCE_ROLE_NAME", value = aws_iam_role.ssm_managed_instance.name }
       ]
-      log_configuration = {
+      logConfiguration = {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = aws_cloudwatch_log_group.app.name
@@ -100,7 +103,6 @@ resource "aws_ecs_task_definition" "monolith" {
           "awslogs-stream-prefix" = "ssm"
         }
       }
-
     }
   ])
 }
@@ -112,7 +114,7 @@ resource "aws_ecs_service" "main" {
   task_definition         = aws_ecs_task_definition.monolith.arn
   desired_count           = var.desired_count
   launch_type             = "FARGATE"
-  enable_execute_command  = true
+  enable_execute_command  = false
   enable_ecs_managed_tags = true
   propagate_tags          = "SERVICE"
 
@@ -207,6 +209,25 @@ resource "aws_iam_role_policy" "task_sqs_publish" {
     }]
   })
 }
+
+resource "aws_iam_role" "ssm_managed_instance" {
+  name = "${var.env}-b2b-ssm-managed-instance-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
+      Principal = { Service = "ssm.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_managed_instance_core" {
+  role       = aws_iam_role.ssm_managed_instance.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_role_policy" "ecs_task_ssm_activation" {
   name = "${var.env}-b2b-ecs-task-ssm-activation"
   role = aws_iam_role.ecs_task.id
@@ -218,6 +239,7 @@ resource "aws_iam_role_policy" "ecs_task_ssm_activation" {
         Effect = "Allow"
         Action = [
           "ssm:CreateActivation",
+          "ssm:DeleteActivation",
           "ssm:AddTagsToResource",
           "ssm:DeregisterManagedInstance",
           "ssm:DescribeInstanceInformation"
@@ -227,9 +249,10 @@ resource "aws_iam_role_policy" "ecs_task_ssm_activation" {
       {
         Effect   = "Allow"
         Action   = "iam:PassRole"
-        Resource = aws_iam_role.ecs_task.arn
+        Resource = aws_iam_role.ssm_managed_instance.arn
       }
     ]
   })
 }
+
 
