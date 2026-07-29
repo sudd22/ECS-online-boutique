@@ -14,10 +14,6 @@ resource "aws_fis_experiment_template" "network_blackhole" {
       key   = "port"
       value = "5432"
     }
-    parameter {
-      key   = "trafficType"
-      value = "egress"
-    }
 
     parameter {
       key   = "protocol"
@@ -25,13 +21,18 @@ resource "aws_fis_experiment_template" "network_blackhole" {
     }
 
     parameter {
-      key   = "useEcsFaultInjectionEndpoints"
-      value = "true"
+      key   = "trafficType"
+      value = "egress"
     }
 
     parameter {
       key   = "duration"
       value = "PT10M"
+    }
+
+    parameter {
+      key   = "useEcsFaultInjectionEndpoints"
+      value = "true"
     }
 
     target {
@@ -45,9 +46,10 @@ resource "aws_fis_experiment_template" "network_blackhole" {
     resource_type  = "aws:ecs:task"
     selection_mode = "COUNT(1)"
 
-    resource_tag {
-      key   = "aws:ecs:serviceName"
-      value = var.ecs_service_name
+    parameters = {
+      cluster = var.ecs_cluster_name
+      service = var.ecs_service_name
     }
   }
 }
+
