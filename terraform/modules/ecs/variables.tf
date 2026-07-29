@@ -90,19 +90,19 @@ variable "task_memory" {
 
 variable "app_cpu" {
   type        = number
-  default     = 256
+  default     = 128
   description = "App container level CPU allocation (units)"
 }
 
 variable "app_memory" {
   type        = number
-  default     = 768
+  default     = 256
   description = "App container level Memory allocation (MB)"
 }
 
 variable "adot_cpu" {
   type        = number
-  default     = 256
+  default     = 128
   description = "ADOT container level CPU allocation (units)"
 }
 
