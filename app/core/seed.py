@@ -62,9 +62,9 @@ CATALOG = [
 def seed_local_database() -> None:
     from app.modules.auth.models import Tenant, User
     from app.modules.auth.services import hash_password
-    from app.modules.notification.models import Notification  # noqa: F401
-    from app.modules.order.models import Order, OrderItem  # noqa: F401
-    from app.modules.payment.models import Payment  # noqa: F401
+    from app.modules.notification.models import Notification  
+    from app.modules.order.models import Order, OrderItem  
+    from app.modules.payment.models import Payment  
     from app.modules.product.models import Product
 
     Base.metadata.create_all(bind=engine)
@@ -78,19 +78,30 @@ def seed_local_database() -> None:
             db.flush()
 
             recruiter = User(
-                email="recruiter@company.com",
+                email="customer@shop.com",
                 hashed_password=hash_password("password123"),
                 tenant_id=tenant.id,
                 is_active=True,
             )
             db.add(recruiter)
             logger.info(
-                "Seeded tenant '%s' and recruiter '%s'.",
+                "Seeded tenant '%s' and user '%s'.",
                 tenant.name,
                 recruiter.email,
             )
         else:
+            existing_user = db.execute(select(User).where(User.email == "customer@shop.com")).scalars().first()
+            if existing_user is None:
+                user = User(
+                    email="customer@shop.com",
+                    hashed_password=hash_password("password123"),
+                    tenant_id=existing_tenant.id,
+                    is_active=True,
+                )
+                db.add(user)
+                db.commit()
             logger.info("Seed skipped: tenant '%s' already present.", existing_tenant.name)
+
 
         synced = 0
         for item in CATALOG:
