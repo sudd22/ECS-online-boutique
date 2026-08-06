@@ -19,7 +19,7 @@ logger = logging.getLogger("main")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if settings.ENVIRONMENT in ("local", "dev"):
+    if settings.ENVIRONMENT in ("local", "dev", "prod"):
         try:
             from app.core.seed import seed_local_database
 
@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("Local seed skipped/failed: %s", exc)
     yield
+
 
 
 app = FastAPI(
@@ -50,6 +51,19 @@ STATIC_DIR = Path(__file__).parent / "static"
 @app.get("/health", tags=["system"])
 async def health():
     return {"status": "healthy"}
+
+
+@app.get("/seed", tags=["system"])
+async def trigger_seed():
+    try:
+        from app.core.seed import seed_local_database
+
+        seed_local_database()
+        return {"status": "seeded", "message": "Database successfully populated with catalog!"}
+    except Exception as exc:
+        logger.error("Seeding error: %s", exc)
+        return JSONResponse(status_code=500, content={"status": "error", "detail": str(exc)})
+
 
 
 @app.get("/store", include_in_schema=False)
