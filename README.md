@@ -18,15 +18,15 @@
 </p>
 
 
+
+
+## AIOps architecture
+
 <p align="center">
   <img src="Assets/aiops%20diagram.png" alt="AIOps flow: FIS blocks database traffic, CloudWatch triggers DevOps Agent investigation, and Slack approval invokes ECS remediation" width="1100" />
 </p>
 
 The application runs in **`eu-west-2` (London)**. The FastAPI service runs on ECS Fargate in private subnets. An Application Load Balancer and AWS WAF handle public traffic, while RDS PostgreSQL stores the application data. Successful simulated payments publish to SQS; a Lambda consumer records notifications, with repeated failures moved to a dead-letter queue. ADOT exports telemetry, and GitHub Actions publishes the application image to ECR using OIDC credentials.
-
-The diagram illustrates the overall design. Terraform creates **one optional NAT Gateway** shared by the private subnets, rather than the two pictured. Development starts with one task; production starts with two and adds Route 53 and ACM. RDS is single-AZ by default.
-
-## AIOps architecture
 
 AWS FIS blocks outbound database traffic on TCP `5432` for one ECS task. Database-backed requests return HTTP `500`, triggering the ALB target 5xx alarm. EventBridge invokes an ingestion Lambda that sends incident context to AWS DevOps Agent. SNS carries alarm and recovery notifications to Slack through AWS Chatbot. After an operator approves remediation, a scoped Lambda forces an ECS rollout to replace affected tasks.
 
@@ -376,53 +376,6 @@ Use `"amount":"66.60"` to exercise the simulated HTTP `402` response.
 ├── .gitignore
 └── .trivyignore
 ```
-
----
-
-## Deploy model
-
-### First time — create the persistent resources
-
-The persistent Terraform layer creates the state bucket, state lock table, KMS key, ECR repository and GitHub OIDC roles. Review the backend and account-specific values before applying it.
-
-```bash
-cd terraform/persistent
-terraform init
-terraform plan
-terraform apply
-```
-
-### Deploy an environment
-
-The development and production environments use separate Terraform state keys. Both use `eu-west-2`.
-
-```bash
-cd terraform/environments/dev
-terraform init
-terraform plan
-terraform apply
-```
-
-For production:
-
-```bash
-cd terraform/environments/prod
-terraform init
-terraform plan
-terraform apply
-```
-
-The production environment also needs a delegated Route 53 zone for `seudd.online` so ACM can validate the certificate.
-
-The repository contains account-specific ARNs, backend settings and image URLs. Adapt them for your AWS account. Before applying, configure:
-
-- AWS credentials for the initial Terraform setup
-- The backend bucket and DynamoDB lock table
-- The ECR image used by the ECS task
-- DevOps Agent webhook settings for the development AIOps path
-- Slack workspace and channel identifiers if Chatbot approval is enabled
-
-Push the initial image to ECR before applying the application environment, because the ECS tasks and notification Lambda depend on it. Later build workflow runs publish new images and force an ECS deployment.
 
 ---
 
