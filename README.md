@@ -17,15 +17,16 @@
   <img src="Assets/main%20arc%20diagram.png" alt="AWS architecture: Route 53, WAF and ALB serve private ECS Fargate tasks, with RDS, SQS, Lambda, ADOT telemetry and OIDC delivery" width="1100" />
 </p>
 
+
+<p align="center">
+  <img src="Assets/aiops%20diagram.png" alt="AIOps flow: FIS blocks database traffic, CloudWatch triggers DevOps Agent investigation, and Slack approval invokes ECS remediation" width="1100" />
+</p>
+
 The application runs in **`eu-west-2` (London)**. The FastAPI service runs on ECS Fargate in private subnets. An Application Load Balancer and AWS WAF handle public traffic, while RDS PostgreSQL stores the application data. Successful simulated payments publish to SQS; a Lambda consumer records notifications, with repeated failures moved to a dead-letter queue. ADOT exports telemetry, and GitHub Actions publishes the application image to ECR using OIDC credentials.
 
 The diagram illustrates the overall design. Terraform creates **one optional NAT Gateway** shared by the private subnets, rather than the two pictured. Development starts with one task; production starts with two and adds Route 53 and ACM. RDS is single-AZ by default.
 
 ## AIOps architecture
-
-<p align="center">
-  <img src="Assets/aiops%20diagram.png" alt="AIOps flow: FIS blocks database traffic, CloudWatch triggers DevOps Agent investigation, and Slack approval invokes ECS remediation" width="1100" />
-</p>
 
 AWS FIS blocks outbound database traffic on TCP `5432` for one ECS task. Database-backed requests return HTTP `500`, triggering the ALB target 5xx alarm. EventBridge invokes an ingestion Lambda that sends incident context to AWS DevOps Agent. SNS carries alarm and recovery notifications to Slack through AWS Chatbot. After an operator approves remediation, a scoped Lambda forces an ECS rollout to replace affected tasks.
 
@@ -215,7 +216,7 @@ AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The
 
 `/health` returns a static response and does not test database connectivity. Use `/products` alongside `/health` when verifying recovery. The ingestion handler supports resolved incidents, but the current EventBridge rule forwards only `ALARM`; recovery notifications follow the SNS path.
 
-### AIOps evidence
+### AIOps Documentation
 
 <p align="center">
   <img src="Assets/experiment%20profile.png" alt="AWS FIS experiment profile" width="900" />
@@ -308,7 +309,7 @@ docker compose -f dockerfiles/compose.yml up --build
 
 The Compose database uses PostgreSQL 15 and persists data in the `postgres_local_data` volume. OpenTelemetry is disabled locally because the ADOT sidecar is only used in ECS.
 
-### Quick API tour
+### API 
 
 Get a token with the OAuth2 password flow:
 
@@ -425,19 +426,35 @@ Push the initial image to ECR before applying the application environment, becau
 
 ---
 
-## Cost controls
+## FinOps — controlling build and environment costs
 
-AWS costs depend on how long the resources run and how much traffic they handle. The main ongoing costs are:
+The development platform is designed to run for build verification, demonstrations and fault-injection sessions, then scale down between sessions. The main cost control is the Terraform **NAT Gateway and Elastic IP toggle**, combined with stopping idle compute and removing environments that are no longer needed. Savings depend on runtime, traffic and the resources that remain provisioned.
 
-| Resource | Cost control |
-|----------|--------------|
-| NAT Gateway | Set `deploy_nat_gateway = false` when outbound access is not needed |
-| ECS Fargate | Scale the service to zero between sessions |
-| RDS PostgreSQL | Stop the development instance when it is not in use |
-| ALB and WAF | Destroy the environment when the demonstration is complete |
-| CloudWatch, SQS and Lambda | Remove unused environments and review log retention |
+`deploy_nat_gateway` controls three resources in [`terraform/modules/vpc/main.tf`](terraform/modules/vpc/main.tf):
 
-The Terraform state, ECR repository and lock table are persistent resources. Keep them separate from the application environment and review their retention before a full teardown.
+| Resource | `true` — active session | `false` — idle environment |
+|----------|-------------------------|----------------------------|
+| `aws_nat_gateway.nat` | Creates one NAT Gateway in the first public subnet | Deletes the NAT Gateway |
+| `aws_eip.nat` | Allocates its Elastic IP | Releases the Elastic IP |
+| `aws_route.private_nat` | Routes private-subnet internet traffic through NAT | Removes the NAT default route |
+
+All three use `count = var.deploy_nat_gateway ? 1 : 0`. This means the idle configuration releases the address as well as deleting the gateway; it does not leave an unused NAT Elastic IP allocated. The development variable defaults to `false`; an environment's `terraform.tfvars` or command-line value can override it  `terraform/environments/dev/terraform.tfvars
+
+### Other cost controls in this build
+
+| Area | Existing design / control | Saving and remaining costs |
+|------|---------------------------|----------------------------|
+| ECS Fargate | One development task versus two production tasks; scale development to zero when idle | Avoids idle task compute charges; ALB, database and other provisioned resources remain |
+| Network | One shared optional NAT Gateway | Reduces gateway count; traffic from the other Availability Zone can incur cross-AZ transfer costs and shares the gateway's availability dependency |
+| RDS | `db.t4g.micro`, 20 GB and single-AZ module defaults; stop development RDS between sessions | Reduces the development footprint; stopped RDS still incurs storage/backup charges and automatically restarts after seven days |
+| Notifications | SQS invokes Lambda instead of maintaining a dedicated worker service | Avoids an always-running worker; request, execution and storage charges still depend on usage |
+| Logs | ECS application and ADOT log groups retain seven days | Limits retained log volume; ingestion and other log groups still need monitoring |
+| Delivery | One modular monolith image and a multi-stage Docker build | Reuses application code for ECS and the notification Lambda; no separate always-running service for each domain |
+| CI runs | Path-filtered workflows and manual environment selection | Limits unrelated workflow runs; hosted-runner usage still depends on the GitHub plan and runtime |
+| Persistent state | DynamoDB lock table uses `PAY_PER_REQUEST` | Lock-table usage is demand-based; S3 versions, ECR images and KMS remain billable |
+
+RDS stop behavior is documented in [AWS RDS temporary stopping](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_StopInstance.html) and [RDS pricing](https://aws.amazon.com/rds/pricing/). The shared NAT trade-off is described in [AWS NAT Gateway basics](https://docs.aws.amazon.com/vpc/latest/userguide/nat-gateway-basics.html).
+
 
 ---
 
@@ -492,18 +509,14 @@ There is currently no application test suite. The repository's automated validat
 
 ---
 
-## Current implementation boundaries
-
-The service can run multiple Fargate tasks, but there is no configured ECS autoscaling policy. The application seeds demo data in `local`, `dev` and `prod`, exposes `/seed`, and uses development JWT defaults unless configured otherwise. Payment and notification routes need further authorization work for real customer use. SQS publishing is best-effort and does not use a transactional outbox.
 
 ## Design decisions
 
 | Choice | Reason |
 |--------|--------|
 | Modular monolith | Keeps the five business areas separate without the cost of five deployed services |
-| Zero cross-module joins | Prevents domain logic from depending directly on another module's tables |
 | Same-origin storefront | Serves the UI and API from one container without CORS configuration |
-| SQS plus DLQ | Keeps notification work out of the checkout request and preserves failed messages |
+| SQS and DLQ | Keeps notification work out of the checkout request and preserves failed messages |
 | Container-image Lambda | Reuses the application image and notification code |
 | OIDC for GitHub Actions | Removes long-lived AWS credentials from CI/CD |
 | ADOT sidecar | Sends application telemetry to AWS without adding tracing code to each route |
@@ -514,7 +527,7 @@ The service can run multiple Fargate tasks, but there is no configured ECS autos
 
 ## Author
 
-**Sudd** — Cloud & DevOps Engineer<br/>
+**Seud** — Cloud & DevOps Engineer<br/>
 GitHub: [@sudd22](https://github.com/sudd22) · Repository: [sudd22/ECS-online-boutique](https://github.com/sudd22/ECS-online-boutique)
 
-This project is inspired by Google's Online Boutique architecture and adapted into a modular monolith on AWS. Payments are simulated for demonstration purposes.
+
