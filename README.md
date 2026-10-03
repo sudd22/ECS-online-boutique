@@ -1,8 +1,8 @@
-<h1 align="center"> ECS Online Boutique — Modular Monolith on AWS</h1>
+<h1 align="center">ECS Online Boutique — AWS Platform &amp; AIOps</h1>
 
 <p align="center">
-  <strong>A FastAPI online boutique deployed as a modular monolith on AWS.</strong><br/>
-  Terraform manages the infrastructure, while GitHub Actions builds, scans and deploys the container.
+  <strong>A FastAPI storefront on ECS Fargate with Terraform, CI/CD and approval-based incident recovery.</strong><br/>
+  GitHub Actions delivers the container; AWS FIS, DevOps Agent and Slack demonstrate investigation and recovery.
 </p>
 
 <p align="center">
@@ -11,22 +11,45 @@
 
 ---
 
-## Architecture
+## AWS architecture
 
 <p align="center">
-  <em>Main architecture diagram will be added here.</em><br/>
-  <sub>Add the main architecture image to <code>Assets/</code> when it is ready.</sub>
+  <img src="Assets/main%20arc%20diagram.png" alt="AWS architecture: Route 53, WAF and ALB serve private ECS Fargate tasks, with RDS, SQS, Lambda, ADOT telemetry and OIDC delivery" width="1100" />
 </p>
 
-The application runs in **`eu-west-2` (London)**. The FastAPI service runs on ECS Fargate in private subnets. An Application Load Balancer and AWS WAF handle public traffic, while RDS PostgreSQL stores the application data.
+The application runs in **`eu-west-2` (London)**. The FastAPI service runs on ECS Fargate in private subnets. An Application Load Balancer and AWS WAF handle public traffic, while RDS PostgreSQL stores the application data. Successful simulated payments publish to SQS; a Lambda consumer records notifications, with repeated failures moved to a dead-letter queue. ADOT exports telemetry, and GitHub Actions publishes the application image to ECR using OIDC credentials.
+
+The diagram illustrates the overall design. Terraform creates **one optional NAT Gateway** shared by the private subnets, rather than the two pictured. Development starts with one task; production starts with two and adds Route 53 and ACM. RDS is single-AZ by default.
+
+## AIOps architecture
+
+<p align="center">
+  <img src="Assets/aiops%20diagram.png" alt="AIOps flow: FIS blocks database traffic, CloudWatch triggers DevOps Agent investigation, and Slack approval invokes ECS remediation" width="1100" />
+</p>
+
+AWS FIS blocks outbound database traffic on TCP `5432` for one ECS task. Database-backed requests return HTTP `500`, triggering the ALB target 5xx alarm. EventBridge invokes an ingestion Lambda that sends incident context to AWS DevOps Agent. SNS carries alarm and recovery notifications to Slack through AWS Chatbot. After an operator approves remediation, a scoped Lambda forces an ECS rollout to replace affected tasks.
+
+[Recovery walkthrough and screenshots](#observability-and-aiops) · [CI/CD](#cicd--four-workflows-with-oidc) · [Run locally](#run-locally-no-aws-required)
+
+## Storefront demo
+
+[![Animated preview of the Online Boutique storefront — click to watch the full recording](Assets/storefront-preview.gif)](https://github.com/sudd22/ECS-online-boutique/raw/refs/heads/main/Assets/webapp.webm)
+
+**[Watch the full storefront recording](https://github.com/sudd22/ECS-online-boutique/raw/refs/heads/main/Assets/webapp.webm)** · [Recording file](Assets/webapp.webm)
+
+The preview is an excerpt from the original WebM. The storefront at `/store` serves the catalogue, shopping bag, sign-in and checkout from the same container as the API.
+
+## Application design
 
 The application is one deployable service with five internal modules:
 
-- Auth
-- Product
-- Order
-- Payment
-- Notification
+| Module | Responsibility | Main API |
+|--------|----------------|----------|
+| Auth | Users, tenants and JWT login | `/auth` |
+| Product | Catalogue lookup and stock operations | `/products` |
+| Order | Tenant-scoped orders, stock checks and totals | `/orders` |
+| Payment | Simulated gateway responses and payment event publishing | `/payments` |
+| Notification | Notification records and SQS consumption | `/notifications` |
 
 Each module owns its tables logically. Modules do not join directly to another module's tables. They use public service functions for synchronous work and SQS for asynchronous events.
 
@@ -47,14 +70,6 @@ This project applies cloud and platform engineering practices to a small e-comme
 
 The application also includes a small storefront at `/store`, served by FastAPI from the same container as the API.
 
-<p align="center">
-  <video src="Assets/webapp.webm" controls muted playsinline width="900">
-    <a href="Assets/webapp.webm">Watch the storefront recording</a>
-  </video>
-  <br/>
-  <em>Storefront and API demonstration</em>
-</p>
-
 ---
 
 ## How a checkout works
@@ -67,6 +82,8 @@ The application also includes a small storefront at `/store`, served by FastAPI 
 6. Call `POST /payments/process` to run the payment simulator.
 7. A successful payment is saved and publishes a `payment.completed` event to SQS when a queue is configured.
 8. The notification consumer reads the event and records the notification.
+
+Notifications are persisted as records rather than sent as customer emails. The payment route records success and publishes the event, but does not call the order module's `mark_order_paid` function.
 
 The payment service is deliberately simulated:
 
@@ -84,7 +101,7 @@ The payment service is deliberately simulated:
 - ECS tasks, RDS and the notification Lambda run in private subnets
 - Public Application Load Balancer forwards traffic to port `8000`
 - AWS WAF rate-limits requests to 100 per IP
-- NAT Gateway is optional and controlled with `deploy_nat_gateway`
+- One shared NAT Gateway is optional and controlled with `deploy_nat_gateway`
 - Production adds Route 53 records and an ACM certificate for `seudd.online`
 
 ### Application platform
@@ -104,6 +121,7 @@ The payment service is deliberately simulated:
 - Docker health checks call `/health`
 - ECR stores the application image and scans images on push
 - The same image supports ECS with Uvicorn and Lambda with `awslambdaric`
+- The ECS task also includes an SSM agent sidecar for the fault-injection setup
 
 ---
 
@@ -138,7 +156,7 @@ The production safeguards require:
 - `apply-prod` when manually applying the production environment
 - `destroy-prod` when manually destroying the production environment
 
-Trivy and Checkov are present as part of the pipeline. Review the workflow settings before treating either scan as a release gate.
+Trivy uses `exit-code: 0` and Checkov uses `soft_fail: true`, so scan findings do not block deployment. Automatic runs target development; manual runs can select production. The build workflow only runs for its configured path filter, which currently includes `requirment.txt` rather than `dockerfiles/requirements.txt` and omits Dockerfile changes. Use a manual build for those changes unless the filter is updated.
 
 ### Pipeline evidence
 
@@ -180,16 +198,22 @@ The task and infrastructure also provide:
 - Slack approval through AWS Chatbot
 - A remediation Lambda that forces a new ECS deployment
 
-<p align="center">
-  <em>AIOps flow diagram will be added here.</em><br/>
-  <sub>Add the AIOps diagram to <code>Assets/</code> when it is ready.</sub>
-</p>
-
 The intended demonstration is:
 
 `FIS → CloudWatch alarm → EventBridge → DevOps Agent → Slack approval → remediation Lambda → ECS deployment`
 
 AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The database connection fails, but the telemetry path on port `443` remains available. After approval in Slack, the remediation Lambda forces a new deployment and ECS starts a replacement task with a new network interface.
+
+### Recovery walkthrough
+
+1. Start the FIS experiment against one task in the development ECS service.
+2. Send database-backed requests, such as `GET /products`, to produce target 5xx errors. The alarm triggers at one or more errors in a 60-second period.
+3. EventBridge forwards the `ALARM` event to the ingestion Lambda; DevOps Agent receives the incident context through its configured webhook.
+4. Review the investigation and approve remediation from Slack. The remediation handler accepts `IncidentType: NETWORK_BLACKHOLE`.
+5. The Lambda calls `ecs.update_service(forceNewDeployment=True)` to replace tasks.
+6. Repeat `/products` requests and check the target 5xx metric and alarm recovery.
+
+`/health` returns a static response and does not test database connectivity. Use `/products` alongside `/health` when verifying recovery. The ingestion handler supports resolved incidents, but the current EventBridge rule forwards only `ALARM`; recovery notifications follow the SNS path.
 
 ### AIOps evidence
 
@@ -231,8 +255,26 @@ pip install -r dockerfiles/requirements.txt
 
 export ENVIRONMENT=local
 export DATABASE_URL=sqlite:///./local_b2b.db
+export OTEL_SDK_DISABLED=true
+export AWS_ACCESS_KEY_ID=mock_key
+export AWS_SECRET_ACCESS_KEY=mock_secret
+export AWS_DEFAULT_REGION=eu-west-2
 uvicorn app.main:app --reload --port 8000
 ```
+
+On Windows PowerShell, activate with `.\.venv\Scripts\Activate.ps1` and set the environment using:
+
+```powershell
+$env:ENVIRONMENT = "local"
+$env:DATABASE_URL = "sqlite:///./local_b2b.db"
+$env:OTEL_SDK_DISABLED = "true"
+$env:AWS_ACCESS_KEY_ID = "mock_key"
+$env:AWS_SECRET_ACCESS_KEY = "mock_secret"
+$env:AWS_DEFAULT_REGION = "eu-west-2"
+uvicorn app.main:app --reload --port 8000
+```
+
+Mock credentials allow the payment module to initialize its SQS client locally. Leave `NOTIFICATIONS_QUEUE_URL` unset to skip publishing; this mode needs no AWS resources.
 
 Open:
 
@@ -250,16 +292,18 @@ Password: password123
 
 ### Docker Compose
 
-The intended command is:
+Before running Compose, set `services.web.build.dockerfile` to `dockerfiles/Dockerfile`, relative to its build context:
+
+```yaml
+build:
+  context: ..
+  dockerfile: dockerfiles/Dockerfile
+```
+
+Then run from the repository root:
 
 ```bash
 docker compose -f dockerfiles/compose.yml up --build
-```
-
-The current Compose file points at `Dockerfile` while the file is stored in `dockerfiles/Dockerfile`. If the image build cannot find the Dockerfile, set the Compose build entry to:
-
-```yaml
-dockerfile: dockerfiles/Dockerfile
 ```
 
 The Compose database uses PostgreSQL 15 and persists data in the `postgres_local_data` volume. OpenTelemetry is disabled locally because the ADOT sidecar is only used in ECS.
@@ -316,7 +360,7 @@ Use `"amount":"66.60"` to exercise the simulated HTTP `402` response.
 │   ├── static/                 # Storefront served at /store
 │   ├── config.py               # Environment-based settings
 │   └── main.py                 # Application entrypoint and routes
-├── Assets/                     # Screenshots and application recording
+├── Assets/                     # Architecture diagrams, screenshots and demo recording
 ├── dockerfiles/
 │   ├── Dockerfile              # Multi-stage application image
 │   ├── compose.yml             # Local PostgreSQL and web services
@@ -369,7 +413,7 @@ terraform apply
 
 The production environment also needs a delegated Route 53 zone for `seudd.online` so ACM can validate the certificate.
 
-Before applying, configure:
+The repository contains account-specific ARNs, backend settings and image URLs. Adapt them for your AWS account. Before applying, configure:
 
 - AWS credentials for the initial Terraform setup
 - The backend bucket and DynamoDB lock table
@@ -377,7 +421,7 @@ Before applying, configure:
 - DevOps Agent webhook settings for the development AIOps path
 - Slack workspace and channel identifiers if Chatbot approval is enabled
 
-After the first image is available in ECR, the build workflow can publish later images and force a new ECS deployment.
+Push the initial image to ECR before applying the application environment, because the ECS tasks and notification Lambda depend on it. Later build workflow runs publish new images and force an ECS deployment.
 
 ---
 
@@ -410,7 +454,11 @@ aws ecs update-service \
 
 Then set `deploy_nat_gateway = false` in the development variables and apply Terraform. Stop the development RDS instance from the AWS console.
 
+Disabling NAT removes private-subnet internet egress; the current Terraform does not provide replacement VPC endpoints. The ECS service ignores Terraform changes to `desired_count`, so explicitly restore its task count when resuming.
+
 For a full environment teardown, run `terraform-destroy.yml` from GitHub Actions. The workflow requires `destroy-prod` for production.
+
+The RDS module uses `skip_final_snapshot = true`; take a backup first if its data must be retained.
 
 Keep the persistent Terraform resources unless you intend to recreate the state, lock table, ECR repository and OIDC roles.
 
@@ -443,6 +491,10 @@ Expected response:
 There is currently no application test suite. The repository's automated validation focuses on Terraform formatting and validation, TFLint, Checkov, container scanning and deployment workflows.
 
 ---
+
+## Current implementation boundaries
+
+The service can run multiple Fargate tasks, but there is no configured ECS autoscaling policy. The application seeds demo data in `local`, `dev` and `prod`, exposes `/seed`, and uses development JWT defaults unless configured otherwise. Payment and notification routes need further authorization work for real customer use. SQS publishing is best-effort and does not use a transactional outbox.
 
 ## Design decisions
 
