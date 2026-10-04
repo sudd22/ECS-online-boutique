@@ -178,10 +178,7 @@ Trivy uses `exit-code: 0` and Checkov uses `soft_fail: true`, so scan findings d
 | Secret storage | RDS manages the master password in Secrets Manager |
 | Non-root container | The application image runs as UID `10001` |
 | Scoped remediation | The remediation Lambda is limited to updating the configured ECS service |
-
-This is a demonstration application. Payment processing is simulated, JWTs use application configuration, and the authentication, payment and notification routes should be reviewed before using the project for real customer data or payments.
-
-Do not commit `.env` files, Terraform state, access keys, database passwords, webhook URLs or API keys. Use environment variables, GitHub secrets and Secrets Manager for local and deployed credentials.
+| Trivy and Checkov scans | the pipeline also uses trivy and checkov to make the infrastructure follow best practice security protocol |
 
 ---
 
