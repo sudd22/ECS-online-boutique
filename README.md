@@ -234,7 +234,17 @@ AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The
   <img src="Assets/cloudwatch%205xx%20alarm%20after%20fis%20is%20fixed.png" alt="CloudWatch alarm recovery" width="900" />
 </p>
 
-Further screenshots: [FIS experiment start](Assets/experiment%20init.png) and [successful ECS redeployment](Assets/Screenshot%20from%202026-07-27%2002-09-40.png).
+### FIS experiment start
+
+<p align="center">
+  <img src="Assets/experiment%20init.png" alt="FIS experiment start" width="900" />
+</p>
+
+### Successful ECS redeployment
+
+<p align="center">
+  <img src="Assets/Screenshot%20from%202026-07-27%2002-09-40.png" alt="Successful ECS redeployment" width="900" />
+</p>
 
 The AIOps path requires account-specific DevOps Agent webhook settings and Slack workspace and channel identifiers.
 
