@@ -224,11 +224,17 @@ AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The
   <img src="Assets/experiment%20profile.png" alt="AWS FIS experiment profile" width="900" />
 </p>
 
+
+
+
 2. FIS experiment start
 
 <p align="center">
   <img src="Assets/experiment%20init.png" alt="FIS experiment start" width="900" />
 </p>
+
+
+
 
 3. AWS DEVOPS AGENT incident analysis
    
@@ -236,17 +242,26 @@ AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The
   <img src="Assets/aws%20devops%20agent%20incident%20analysis.png" alt="AWS DevOps Agent incident analysis" width="900" />
 </p>
 
+
+
+
 4. SLACK incident remediation ACCEPT/DECLINE (HUMAN IN THE LOOP) 
 
 <p align="center">
   <img src="Assets/Screenshot%20from%202026-07-27%2002-09-40.png" alt="Successful ECS redeployment" width="900" />
 </p>
 
+
+
+
 5. SLACK remediation approval initiateS LAMBDA ACTION
 
 <p align="center">
   <img src="Assets/fis%20fix%20lambda%20funciton%20in%20slack.png" alt="Slack remediation approval" width="900" />
 </p>
+
+
+
 
 6. CLOUDWATCH http-5XX ALARM resolves to OK after the remediation 
 
