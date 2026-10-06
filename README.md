@@ -94,93 +94,6 @@ The payment service is deliberately simulated:
 
 ---
 
-## Infrastructure highlights
-
-### Network and edge
-
-- VPC with two public and two private subnets across two Availability Zones
-- ECS tasks, RDS and the notification Lambda run in private subnets
-- Public Application Load Balancer forwards traffic to port `8000`
-- AWS WAF rate-limits requests to 100 per IP
-- One shared NAT Gateway is optional and controlled with `deploy_nat_gateway`
-- Production adds Route 53 records and an ACM certificate for `seudd.online`
-
-### Application platform
-
-- ECS Fargate service named `dev-b2b-monolith-service` in development
-- Production runs with two desired tasks; development uses one
-- RDS PostgreSQL stores application data
-- RDS manages the database master password in Secrets Manager
-- SQS notifications queue uses a dead-letter queue after three failed receives
-- The notification consumer is a container-image Lambda using the same ECR image as the application
-
-### Container and delivery
-
-- Python 3.11 slim multi-stage image
-- Dependencies are built as wheels before the runtime image is assembled
-- The container runs as a non-root user
-- Docker health checks call `/health`
-- ECR stores the application image and scans images on push
-- The same image supports ECS with Uvicorn and Lambda with `awslambdaric`
-- The ECS task also includes an SSM agent sidecar for the fault-injection setup
-
----
-
-## Scalability and resilience
-
-The design keeps the application simple while allowing the main components to scale independently:
-
-- Fargate can run more than one application task.
-- The ALB distributes requests between healthy tasks.
-- RDS provides the shared relational data store.
-- SQS separates notification processing from the checkout request.
-- Lambda consumes notifications without a permanently running worker.
-- The notification dead-letter queue keeps failed messages for investigation.
-
-The current implementation is sized as a portfolio and demonstration system rather than a high-volume retail platform. The production environment uses two Fargate tasks, while development is smaller and can be scaled down between sessions. The RDS module defaults to a single-AZ instance unless its settings are changed.
-
----
-
-## CI/CD — four workflows with OIDC
-
-GitHub Actions authenticates to AWS through GitHub's OIDC provider. No long-lived AWS access keys are required in the repository.
-
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| `build-and-push.yml` | Push to `main` or manual run | Builds the image, runs Trivy, pushes SHA and `latest` tags to ECR, then forces an ECS deployment |
-| `terraform-plan.yml` | Pull requests changing Terraform or manual run | Runs Terraform formatting, validation, TFLint, Checkov and a plan |
-| `terraform-apply.yml` | Terraform changes on `main` or manual run | Applies the selected environment with Terraform |
-| `terraform-destroy.yml` | Manual run | Destroys the selected Terraform environment |
-
-The production safeguards require:
-
-- `apply-prod` when manually applying the production environment
-- `destroy-prod` when manually destroying the production environment
-
-Trivy uses `exit-code: 0` and Checkov uses `soft_fail: true`, so scan findings do not block deployment. Automatic runs target development; manual runs can select production. The build workflow only runs for its configured path filter, which currently includes `requirment.txt` rather than `dockerfiles/requirements.txt` and omits Dockerfile changes. Use a manual build for those changes unless the filter is updated.
-
-### Pipeline evidence
-
-<p align="center">
-  <img src="Assets/cicd.png" alt="GitHub Actions workflows" width="900" />
-</p>
-
----
-
-## Security model
-
-| Protection | How it works |
-|------------|--------------|
-| Private application tasks | ECS tasks do not receive public IP addresses and accept application traffic from the ALB |
-| Private database | RDS accepts PostgreSQL traffic from the ECS and notification Lambda security groups |
-| Edge rate limiting | AWS WAF blocks an IP after the configured request limit |
-| Temporary CI credentials | GitHub Actions assumes AWS roles through OIDC |
-| Secret storage | RDS manages the master password in Secrets Manager |
-| Non-root container | The application image runs as UID `10001` |
-| Scoped remediation | The remediation Lambda is limited to updating the configured ECS service |
-| Trivy and Checkov scans | the pipeline also uses trivy and checkov to make the infrastructure follow best practice security protocol |
-
----
 
 ## Observability and AIOps
 
@@ -272,6 +185,97 @@ AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The
 The AIOps path requires account-specific DevOps Agent webhook settings and Slack workspace and channel identifiers.
 
 ---
+
+
+## Infrastructure highlights
+
+### Network and edge
+
+- VPC with two public and two private subnets across two Availability Zones
+- ECS tasks, RDS and the notification Lambda run in private subnets
+- Public Application Load Balancer forwards traffic to port `8000`
+- AWS WAF rate-limits requests to 100 per IP
+- One shared NAT Gateway is optional and controlled with `deploy_nat_gateway`
+- Production adds Route 53 records and an ACM certificate for `seudd.online`
+
+### Application platform
+
+- ECS Fargate service named `dev-b2b-monolith-service` in development
+- Production runs with two desired tasks; development uses one
+- RDS PostgreSQL stores application data
+- RDS manages the database master password in Secrets Manager
+- SQS notifications queue uses a dead-letter queue after three failed receives
+- The notification consumer is a container-image Lambda using the same ECR image as the application
+
+### Container and delivery
+
+- Python 3.11 slim multi-stage image
+- Dependencies are built as wheels before the runtime image is assembled
+- The container runs as a non-root user
+- Docker health checks call `/health`
+- ECR stores the application image and scans images on push
+- The same image supports ECS with Uvicorn and Lambda with `awslambdaric`
+- The ECS task also includes an SSM agent sidecar for the fault-injection setup
+
+---
+
+## Scalability and resilience
+
+The design keeps the application simple while allowing the main components to scale independently:
+
+- Fargate can run more than one application task.
+- The ALB distributes requests between healthy tasks.
+- RDS provides the shared relational data store.
+- SQS separates notification processing from the checkout request.
+- Lambda consumes notifications without a permanently running worker.
+- The notification dead-letter queue keeps failed messages for investigation.
+
+The current implementation is sized as a portfolio and demonstration system rather than a high-volume retail platform. The production environment uses two Fargate tasks, while development is smaller and can be scaled down between sessions. The RDS module defaults to a single-AZ instance unless its settings are changed.
+
+---
+
+## CI/CD — four workflows with OIDC
+
+GitHub Actions authenticates to AWS through GitHub's OIDC provider. No long-lived AWS access keys are required in the repository.
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `build-and-push.yml` | Push to `main` or manual run | Builds the image, runs Trivy, pushes SHA and `latest` tags to ECR, then forces an ECS deployment |
+| `terraform-plan.yml` | Pull requests changing Terraform or manual run | Runs Terraform formatting, validation, TFLint, Checkov and a plan |
+| `terraform-apply.yml` | Terraform changes on `main` or manual run | Applies the selected environment with Terraform |
+| `terraform-destroy.yml` | Manual run | Destroys the selected Terraform environment |
+
+The production safeguards require:
+
+- `apply-prod` when manually applying the production environment
+- `destroy-prod` when manually destroying the production environment
+
+Trivy uses `exit-code: 0` and Checkov uses `soft_fail: true`, so scan findings do not block deployment. Automatic runs target development; manual runs can select production. The build workflow only runs for its configured path filter, which currently includes `requirment.txt` rather than `dockerfiles/requirements.txt` and omits Dockerfile changes. Use a manual build for those changes unless the filter is updated.
+
+### Pipeline evidence
+
+<p align="center">
+  <img src="Assets/cicd.png" alt="GitHub Actions workflows" width="900" />
+</p>
+
+---
+
+## Security model
+
+| Protection | How it works |
+|------------|--------------|
+| Private application tasks | ECS tasks do not receive public IP addresses and accept application traffic from the ALB |
+| Private database | RDS accepts PostgreSQL traffic from the ECS and notification Lambda security groups |
+| Edge rate limiting | AWS WAF blocks an IP after the configured request limit |
+| Temporary CI credentials | GitHub Actions assumes AWS roles through OIDC |
+| Secret storage | RDS manages the master password in Secrets Manager |
+| Non-root container | The application image runs as UID `10001` |
+| Scoped remediation | The remediation Lambda is limited to updating the configured ECS service |
+| Trivy and Checkov scans | the pipeline also uses trivy and checkov to make the infrastructure follow best practice security protocol |
+
+---
+
+
 
 ## Run locally (no AWS required)
 
