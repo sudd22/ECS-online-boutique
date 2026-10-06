@@ -1,4 +1,4 @@
-<h1 align="center">ECS Online Boutique — AWS Platform &amp; AIOps</h1>
+<h1 align="center">MONOLITH ECS Online Boutique — AWS Platform &amp; AIOps</h1>
 
 <p align="center">
   <strong>A FastAPI storefront on ECS Fargate with Terraform, CI/CD and approval-based incident recovery.</strong><br/>
