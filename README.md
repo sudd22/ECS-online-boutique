@@ -115,7 +115,7 @@ The intended demonstration is:
 
 AWS FIS blackholes outbound TCP port `5432` on one ECS task for ten minutes. The database connection fails, but the telemetry path on port `443` remains available. After approval in Slack, the remediation Lambda forces a new deployment and ECS starts a replacement task with a new network interface.
 
-### Recovery walkthrough
+### Fault Recovery walkthrough
 
 1. Start the FIS experiment against one task in the development ECS service.
 2. Send database-backed requests, such as `GET /products`, to produce target 5xx errors. The alarm triggers at one or more errors in a 60-second period.
